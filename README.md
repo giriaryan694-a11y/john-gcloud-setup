@@ -2,7 +2,7 @@
 
 Install the latest **John the Ripper (Jumbo)** on **Google Cloud Shell** with a single command.
 
-The script compiles John from source, installs the Python `wordlists` package, extracts `rockyou.txt`, creates convenient aliases, and provides a complete cleanup option.
+The script compiles John from source, installs the `wordlists` package, extracts `rockyou.txt`, creates convenient aliases, and provides a complete cleanup option.
 
 ---
 
