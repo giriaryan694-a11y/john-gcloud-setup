@@ -2,10 +2,11 @@
 
 # ==============================================================================
 # Setup Script written by Aryan Giri
-# John the Ripper & Wordlists Manager for GCP Cloud Shell
-# Usage: ./john.sh [--install | --clean-up | -h | --help]
+# John the Ripper & Wordlists Manager for Google Cloud Shell
+# Usage: ./john-gcloud-setup.sh [--install | --clean-up | -h | --help]
 # Optimized for GCP Cloud Shell (2 vCPU, ~7GB RAM, 5GB persistent storage).
 # Compiles John from source (bypassing outdated apt version).
+# Downloads rockyou.txt via GitHub Release Asset (bypasses raw file limits).
 # ==============================================================================
 
 # 1. Define Directory Structure
@@ -29,12 +30,12 @@ show_help() {
     echo ""
     echo "FLAGS:"
     echo "  --install     Compiles the latest John the Ripper (Jumbo) from source,"
-    echo "                installs the Python 'wordlists' package, and reliably"
-    echo "                downloads/extracts rockyou.txt. Adds 'john' and 'johnny' aliases."
+    echo "                downloads rockyou.txt via wget (GitHub release asset),"
+    echo "                and adds 'john' and 'johnny' aliases."
     echo ""
     echo "  --clean-up    Completely removes John the Ripper, all downloaded"
-    echo "                wordlists, the Python package, and cleans up your"
-    echo "                ~/.bashrc aliases to keep your machine clean."
+    echo "                wordlists, and cleans up your ~/.bashrc aliases"
+    echo "                to keep your machine clean."
     echo ""
     echo "  -h, --help    Displays this help message."
     echo ""
@@ -65,20 +66,17 @@ do_install() {
     make -s clean
     make -s -j2
 
-    # Install Python package
-    echo "[+] Installing Python 'wordlists' package via pip..."
-    python3 -m pip install --user -q wordlists || echo "[!] Warning: Python wordlists package installation failed, continuing..."
-
-    # Download/Extract rockyou.txt reliably via apt (avoids GitHub 100MB raw file limits)
+    # Download rockyou.txt reliably via wget (using GitHub release asset to avoid raw file limits)
     ROCKYOU_PATH="$WORDLISTS_DIR/rockyou.txt"
     if [ ! -f "$ROCKYOU_PATH" ]; then
-        echo "[+] Installing system 'wordlists' package to get rockyou.txt reliably..."
-        sudo apt-get update -qq
-        sudo apt-get install -y -qq wordlists
+        echo "[+] Downloading rockyou.txt via wget (GitHub release asset)..."
+        wget -q -O "$ROCKYOU_PATH" "https://github.com/brannondorsey/naive-hashcat/releases/download/data/rockyou.txt"
         
-        echo "[+] Extracting rockyou.txt to $WORDLISTS_DIR..."
-        gunzip -c /usr/share/wordlists/rockyou.txt.gz > "$ROCKYOU_PATH"
-        echo "[+] Successfully extracted rockyou.txt ($(du -h "$ROCKYOU_PATH" | awk '{print $1}'))."
+        if [ -f "$ROCKYOU_PATH" ]; then
+            echo "[+] Successfully downloaded rockyou.txt ($(du -h "$ROCKYOU_PATH" | awk '{print $1}'))."
+        else
+            echo "[!] Warning: Failed to download rockyou.txt. Please check your internet connection."
+        fi
     else
         echo "[*] rockyou.txt already exists. Skipping download."
     fi
@@ -100,7 +98,6 @@ do_install() {
     echo "🔑 John Binary      : $JOHN_BIN_DIR/john"
     echo "📚 Wordlists Dir    : $WORDLISTS_DIR"
     echo "📄 Rockyou Path     : $ROCKYOU_PATH"
-    echo "🐍 Python Package   : 'wordlists' (installed via pip --user)"
     echo "============================================================"
     echo "⚠️  IMPORTANT NEXT STEP:"
     echo "You MUST reload your shell for the 'john' command to work."
@@ -127,9 +124,6 @@ do_cleanup() {
     else
         echo "[*] Base directory not found. Skipping."
     fi
-
-    echo "[+] Uninstalling Python 'wordlists' package..."
-    python3 -m pip uninstall -y --user wordlists > /dev/null 2>&1 || echo "[*] Python package not found or already removed."
 
     if grep -q "alias john=" "$BASHRC_FILE"; then
         echo "[+] Removing John aliases from ~/.bashrc..."
